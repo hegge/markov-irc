@@ -1,6 +1,9 @@
 #!/usr/bin/env runhaskell
 
 {-# LANGUAGE TemplateHaskell #-}
+
+module Markov (Library, learn, generateReply) where
+
 import Test.QuickCheck
 import Test.QuickCheck.All
 
@@ -42,12 +45,12 @@ main = do
 learn :: String -> IO Library
 learn fileName = do blob <- readFile fileName
                     return $ fillLibrary $ splitWords blob
-                  
-splitWords :: String -> [String]  
+
+splitWords :: String -> [String]
 splitWords blob = words $ intercalate " NEWLINE " $ lines blob
 
 fillLibrary :: [String] -> Library
-fillLibrary blob = toMultiMap emptyLibrary $ 
+fillLibrary blob = toMultiMap emptyLibrary $
                     zipWith3 (\x y z -> ((x,y), z)) blob (tail blob) (tail (tail blob))
 
 toMultiMap :: Library -> [((String,String), String)] -> Library
