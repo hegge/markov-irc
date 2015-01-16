@@ -64,31 +64,37 @@ generateReply library gen input =
                               let word = words input
                                   lastWord = last word
                                   canReply = Map.member (lastWord, "NEWLINE") (fromLibrary library)
+                                  (answer, gen') = reply library gen (lastWord, "NEWLINE")
                               in if canReply
-                                then reply library gen (lastWord, "NEWLINE")
+                                then answer
                                 else let size = length $ Map.keys (fromLibrary library)
-                                         (seed, gen_) = randomR (0, size) gen
+                                         (seed, gen') = randomR (0, size-1) gen
                                          elem = Map.elemAt seed (fromLibrary library)
-                                     in reply library gen (fst elem)
+                                         (answer, gen'') = reply library gen' (fst elem)
+                                     in if answer /= ""
+                                          then answer
+                                          else generateReply library gen'' input
 
-terminatingReply :: Library -> StdGen -> (String, String) -> String
+terminatingReply :: Library -> StdGen -> (String, String) -> (String, StdGen)
 terminatingReply library gen (firstWord, secondWord)
-  | secondWord == "NEWLINE" = ""
-  | otherwise  = secondWord ++ " " ++ reply library gen (firstWord, secondWord)
+  | secondWord == "NEWLINE" = ("", gen)
+  | otherwise  =
+                let (nextWord, gen') = reply library gen (firstWord, secondWord)
+                in (secondWord ++ " " ++ nextWord, gen')
 
-reply :: Library -> StdGen -> (String, String) -> String
+reply :: Library -> StdGen -> (String, String) -> (String, StdGen)
 reply library gen (firstWord, secondWord) =
     let nextP = Map.lookup (firstWord, secondWord) (fromLibrary library)
     in case nextP of
-        Nothing -> ""
-        Just next -> let (gen1, gen2) = System.Random.split gen
-                         nextWord = selectWord gen1 next
-                     in terminatingReply library gen2 (secondWord, nextWord)
+        Nothing -> ("", gen)
+        Just next -> let (nextWord, gen') = selectWord gen next
+                         (answer, gen'') = terminatingReply library gen' (secondWord, nextWord)
+                     in (answer, gen'')
 
-selectWord :: StdGen -> [String] -> String
+selectWord :: StdGen -> [String] -> (String, StdGen)
 selectWord gen list =
         let size = length list
-            (seed, gen_) = randomR (0, size-1) gen
-        in list!!seed
+            (seed, gen') = randomR (0, size-1) gen
+        in (list!!seed, gen')
 
 test = $(quickCheckAll)
